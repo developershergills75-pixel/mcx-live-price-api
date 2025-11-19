@@ -1,9 +1,8 @@
 {
-  "version": 3,
-  "routes": [
-    {
-      "src": "/api/live-data",
-      "dest": "/api/live-data.js"
+  "version": 2,
+  "functions": {
+    "api/live-data.js": {
+      "runtime": "nodejs18.x"
     }
-  ]
+  }
 }
