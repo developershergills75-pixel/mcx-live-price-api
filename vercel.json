@@ -1,0 +1,9 @@
+{
+  "version": 3,
+  "routes": [
+    {
+      "src": "/api/live-data",
+      "dest": "/api/live-data.js"
+    }
+  ]
+}
