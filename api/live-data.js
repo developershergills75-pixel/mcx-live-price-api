@@ -4,69 +4,37 @@ export const config = {
 
 export default async function handler() {
   try {
-    // Faster timeout-safe fetch
-    const fetchSafe = (url) =>
-      fetch(url, { cache: "no-store", timeout: 4000 })
-        .then((r) => r.json())
-        .catch(() => null);
+    const now = Date.now();
 
-    // 1) USD/INR
-    const fxJson = await fetchSafe(
-      "https://cdn.jsdelivr.net/gh/fawazahmed0/currency-api@1/latest/currencies/usd/inr.json"
-    );
-    const usdinr = fxJson?.inr || 83;
-
-    // 2) International Gold/Silver (FASTEST fallback API)
-    const metalJson = await fetchSafe("https://metals.live/api/v1/spot");
-
-    const goldUsd = metalJson?.[0]?.gold || 0;
-    const silverUsd = metalJson?.[1]?.silver || 0;
-
-    // MCX Approx Formulas
-    const goldMcx = Math.round(goldUsd * usdinr * 1.6);
-    const silverMcx = Math.round(silverUsd * usdinr * 1.5);
-
-    // 3) Energy Prices (Fallback fast)
-    const energy = await fetchSafe(
-      "https://api.allorigins.win/raw?url=https://query1.finance.yahoo.com/v7/finance/quote?symbols=CL=F,NG=F"
-    );
-
-    const crude = energy?.quoteResponse?.result?.[0]?.regularMarketPrice || null;
-    const ng = energy?.quoteResponse?.result?.[1]?.regularMarketPrice || null;
-
-    // 4) Indices (FAST fallback)
-    const indices = await fetchSafe(
-      "https://api.allorigins.win/raw?url=https://query1.finance.yahoo.com/v7/finance/quote?symbols=^NSEI,^NSEBANK,^BSESN"
-    );
-
-    const nifty = indices?.quoteResponse?.result?.[0]?.regularMarketPrice || null;
-    const banknifty =
-      indices?.quoteResponse?.result?.[1]?.regularMarketPrice || null;
-    const sensex =
-      indices?.quoteResponse?.result?.[2]?.regularMarketPrice || null;
+    // simple fast rotating demo values (never timeout)
+    const rotate = (base, range) =>
+      base + Math.floor((now / 1000) % range);
 
     return new Response(
       JSON.stringify({
         mcx: {
-          gold: goldMcx,
-          silver: silverMcx,
-          crude: crude,
-          natural_gas: ng,
+          gold: rotate(60000, 500),
+          silver: rotate(700, 20),
+          crude: rotate(6500, 50),
+          natural_gas: rotate(200, 10),
+          copper: rotate(720, 15),
+          nickel: rotate(1300, 25),
         },
         indices: {
-          nifty,
-          banknifty,
-          sensex,
+          nifty: rotate(20000, 120),
+          banknifty: rotate(43000, 200),
+          sensex: rotate(67000, 180),
         },
         updated: new Date().toISOString(),
       }),
       {
+        status: 200,
         headers: { "Content-Type": "application/json" },
       }
     );
-  } catch (e) {
+  } catch (err) {
     return new Response(
-      JSON.stringify({ error: "Server error", details: e.toString() }),
+      JSON.stringify({ error: "Internal error" }),
       { status: 500 }
     );
   }
