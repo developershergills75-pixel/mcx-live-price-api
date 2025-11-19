@@ -1,0 +1,13 @@
+{
+  "name": "mcx-live-price-api-india",
+  "version": "1.0.0",
+  "description": "MCX + NSE/BSE live price API for India",
+  "main": "api/live-data.js",
+  "type": "module",
+  "scripts": {
+    "start": "node api/live-data.js"
+  },
+  "dependencies": {
+    "axios": "latest"
+  }
+}
