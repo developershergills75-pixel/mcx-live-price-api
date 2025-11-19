@@ -4,48 +4,70 @@ export const config = {
 
 export default async function handler() {
   try {
-    // 1) USD to INR
-    const fx = await fetch(
+    // Faster timeout-safe fetch
+    const fetchSafe = (url) =>
+      fetch(url, { cache: "no-store", timeout: 4000 })
+        .then((r) => r.json())
+        .catch(() => null);
+
+    // 1) USD/INR
+    const fxJson = await fetchSafe(
       "https://cdn.jsdelivr.net/gh/fawazahmed0/currency-api@1/latest/currencies/usd/inr.json"
     );
-    const fxJson = await fx.json();
     const usdinr = fxJson?.inr || 83;
 
-    // 2) International metals from metals.live
-    const metalRes = await fetch("https://api.metals.live/v1/spot");
-    const metalJson = await metalRes.json();
+    // 2) International Gold/Silver (FASTEST fallback API)
+    const metalJson = await fetchSafe("https://metals.live/api/v1/spot");
 
-    const goldUsd = metalJson[0]?.gold;
-    const silverUsd = metalJson[1]?.silver;
+    const goldUsd = metalJson?.[0]?.gold || 0;
+    const silverUsd = metalJson?.[1]?.silver || 0;
 
-    const goldInr = goldUsd * usdinr;
-    const silverInr = silverUsd * usdinr;
+    // MCX Approx Formulas
+    const goldMcx = Math.round(goldUsd * usdinr * 1.6);
+    const silverMcx = Math.round(silverUsd * usdinr * 1.5);
 
-    // 3) MCX approximation
-    const mcxGold = Math.round(goldInr / 10);
-    const mcxSilver = Math.round(silverInr * 1.5);
+    // 3) Energy Prices (Fallback fast)
+    const energy = await fetchSafe(
+      "https://api.allorigins.win/raw?url=https://query1.finance.yahoo.com/v7/finance/quote?symbols=CL=F,NG=F"
+    );
+
+    const crude = energy?.quoteResponse?.result?.[0]?.regularMarketPrice || null;
+    const ng = energy?.quoteResponse?.result?.[1]?.regularMarketPrice || null;
+
+    // 4) Indices (FAST fallback)
+    const indices = await fetchSafe(
+      "https://api.allorigins.win/raw?url=https://query1.finance.yahoo.com/v7/finance/quote?symbols=^NSEI,^NSEBANK,^BSESN"
+    );
+
+    const nifty = indices?.quoteResponse?.result?.[0]?.regularMarketPrice || null;
+    const banknifty =
+      indices?.quoteResponse?.result?.[1]?.regularMarketPrice || null;
+    const sensex =
+      indices?.quoteResponse?.result?.[2]?.regularMarketPrice || null;
 
     return new Response(
-      JSON.stringify(
-        {
-          mcx: {
-            gold: mcxGold,
-            silver: mcxSilver
-          },
-          updated: new Date().toISOString(),
+      JSON.stringify({
+        mcx: {
+          gold: goldMcx,
+          silver: silverMcx,
+          crude: crude,
+          natural_gas: ng,
         },
-        null,
-        2
-      ),
+        indices: {
+          nifty,
+          banknifty,
+          sensex,
+        },
+        updated: new Date().toISOString(),
+      }),
       {
-        status: 200,
         headers: { "Content-Type": "application/json" },
       }
     );
-  } catch (err) {
+  } catch (e) {
     return new Response(
-      JSON.stringify({ error: err.message }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
+      JSON.stringify({ error: "Server error", details: e.toString() }),
+      { status: 500 }
     );
   }
 }
