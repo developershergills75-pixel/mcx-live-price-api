@@ -1,4 +1,5 @@
 {
-  "name": "mcx-live-price-api",
-  "version": "1.0.0"
+  "name": "mcx-live-api",
+  "version": "1.0.0",
+  "type": "module"
 }
